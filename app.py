@@ -33,7 +33,7 @@ h1, h2, h3 {
     margin-bottom: 25px;
 }
 .sidebar .sidebar-content {
-    background-color: #111827;
+    background-color: #5f2e70;
 }
 .stButton > button {
     background-color: #2563eb;
