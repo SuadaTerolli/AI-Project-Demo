@@ -3,6 +3,7 @@ import pandas as pd
 import joblib
 import os
 
+
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
@@ -16,55 +17,78 @@ st.set_page_config(
 # -----------------------------
 st.markdown("""
 <style>
-body {
-    background-color: #f4f6fa;
+
+/* App background */
+.stApp {
+    background-color: #24102b;
 }
-.main {
-    background-color: #f4f6fa;
+
+/* Main area */
+section[data-testid="stMain"] {
+    background-color: #51335c;
 }
-h1, h2, h3 {
-    color: #1f2937;
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #3d1f47;
 }
+
+/* Text */
+h1, h2, h3, h4, h5, h6, p, label,li,title {
+    color: #e5e7eb;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Cards */
 .card {
-    background-color: white;
+    background-color: #51335c;
     padding: 25px;
     border-radius: 16px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
     margin-bottom: 25px;
 }
-.sidebar .sidebar-content {
-    background-color: #5f2e70;
-}
+
+/* Buttons */
 .stButton > button {
-    background-color: #2563eb;
+    background-color: #3d1f47;
     color: white;
     border-radius: 12px;
     height: 3em;
     font-size: 16px;
     border: none;
 }
+
 .stButton > button:hover {
-    background-color: #1e40af;
+    background-color: s#875d96;
 }
+
+/* Success & Error boxes */
 .success-box {
-    background-color: #ecfdf5;
+    background-color: #064e3b;
     padding: 20px;
     border-radius: 12px;
     border-left: 6px solid #10b981;
+    color: #ecfdf5;
 }
+
 .error-box {
-    background-color: #fef2f2;
+    background-color: #7f1d1d;
     padding: 20px;
     border-radius: 12px;
     border-left: 6px solid #ef4444;
+    color: #fef2f2;
 }
+
 </style>
 """, unsafe_allow_html=True)
+
 
 # -----------------------------
 # TITLE
 # -----------------------------
-st.title("🤖 Employee Attrition Prediction System")
+st.markdown(
+        '<h1 style="font-family: JetBrains Mono, monospace;">🤖 Employee Attrition Prediction System</h2>',
+        unsafe_allow_html=True
+    )
 st.markdown(
     "A comparison of **Rule-Based**, **Machine Learning**, and **Hybrid AI Systems** "
     "for predicting employee attrition."
@@ -99,22 +123,37 @@ section = st.sidebar.radio(
 # -----------------------------
 if section == "Overview":
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("📌 Project Overview")
+    st.markdown(
+        '<h2 style="font-family: JetBrains Mono, monospace;">📌 Project Overview</h2>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("""
-    ### Models Used
-    **Rule-Based System**
-    - Expert-defined IF–THEN rules
-    - Very accurate but limited coverage
+    <div class="overview-text">
 
-    **Random Forest Classifier**
-    - Data-driven machine learning model
-    - Handles complex patterns
+    <h3 style="font-family: JetBrains Mono, monospace;">Models Used</h3>
 
-    **Hybrid Sequential System**
-    - Rule-based decisions first
-    - Random Forest handles undecided cases
-    """)
+    <b>Rule-Based System</b>
+    <ul>
+        <li>Expert-defined IF–THEN rules</li>
+        <li>Very accurate but limited coverage</li>
+    </ul>
+
+    <b>Random Forest Classifier</b>
+    <ul>
+        <li>Data-driven machine learning model</li>
+        <li>Handles complex patterns</li>
+    </ul>
+
+    <b>Hybrid Sequential System</b>
+    <ul>
+        <li>Rule-based decisions first</li>
+        <li>Random Forest handles undecided cases</li>
+    </ul>
+
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # -----------------------------
@@ -122,7 +161,10 @@ if section == "Overview":
 # -----------------------------
 elif section == "Model Comparison":
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("📊 Model Performance Comparison")
+    st.markdown(
+        '<h2 style="font-family: JetBrains Mono, monospace;">📊 Model Performance Comparison',
+        unsafe_allow_html=True
+    )
 
     comparison_df = pd.DataFrame({
         "Model": ["Rule-Based", "Random Forest", "Hybrid"],
@@ -147,7 +189,10 @@ elif section == "Model Comparison":
 # -----------------------------
 elif section == "Feature Importance":
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("🔍 Feature Importance (Random Forest)")
+    st.markdown(
+        '<h2 style="font-family: JetBrains Mono, monospace;">🔍 Feature Importance (Random Forest)',
+        unsafe_allow_html=True
+    )
 
     importance_path = os.path.join(MODELS_DIR, "feature_importance.csv")
 
@@ -168,7 +213,10 @@ elif section == "Feature Importance":
 # -----------------------------
 elif section == "Try a Prediction":
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("🧪 Try a Prediction")
+    st.markdown(
+        '<h2 style="font-family: JetBrains Mono, monospace;">🧪 Try a Prediction</h2>',
+        unsafe_allow_html=True
+    )
 
     col1, col2, col3 = st.columns(3)
 
@@ -187,7 +235,7 @@ elif section == "Try a Prediction":
         total_years = st.slider("Total Working Years", 0, 40, 10)
         years_manager = st.slider("Years with Manager", 0, 20, 3)
 
-    if st.button("🔮 Predict Attrition"):
+    if st.button("Predict Attrition"):
         input_df = pd.DataFrame(0, index=[0], columns=feature_names)
 
         input_df["Age"] = age
@@ -223,7 +271,10 @@ elif section == "Try a Prediction":
 # -----------------------------
 elif section == "Conclusion":
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("✅ Conclusion")
+    st.markdown(
+        '<h2 style="font-family: JetBrains Mono, monospace;">Conclusion</h2>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("""
     - Rule-based systems provide **explainability**
@@ -234,5 +285,4 @@ elif section == "Conclusion":
     using symbolic and data-driven methods.
     """)
 
-    st.success("Project ready for demo & grading!")
     st.markdown('</div>', unsafe_allow_html=True)
