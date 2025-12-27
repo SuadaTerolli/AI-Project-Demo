@@ -1,0 +1,76 @@
+import os
+import joblib
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    classification_report
+)
+from preprocessing import preprocess_data
+
+
+def train_random_forest():
+    # Load data
+    X_train, X_test, y_train, y_test = preprocess_data()
+
+    # Train Random Forest
+    rf = RandomForestClassifier(
+    n_estimators=500,          # more stable ensemble
+    max_depth=16,              # prevents overfitting
+    min_samples_split=10,      # avoids noisy splits
+    min_samples_leaf=5,        # smoother decision boundaries
+    max_features="sqrt",
+    class_weight={0: 1, 1: 3}, # focus more on attrition
+    random_state=42,
+    n_jobs=-1
+)
+
+    rf.fit(X_train, y_train)
+
+    # Predictions
+    y_pred = rf.predict(X_test)
+
+    # Evaluation
+    print("\n=== Random Forest Evaluation ===")
+    print(f"Accuracy : {accuracy_score(y_test, y_pred):.4f}")
+    print(f"Precision: {precision_score(y_test, y_pred):.4f}")
+    print(f"Recall   : {recall_score(y_test, y_pred):.4f}")
+    print(f"F1 Score : {f1_score(y_test, y_pred):.4f}")
+    print("\nConfusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred))
+
+    # Save model
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    MODELS_DIR = os.path.join(BASE_DIR, "models")
+    os.makedirs(MODELS_DIR, exist_ok=True)
+
+    joblib.dump(rf, os.path.join(MODELS_DIR, "random_forest.pkl"))
+
+    # =============================
+    # FEATURE IMPORTANCE
+    # =============================
+    feature_names = joblib.load(os.path.join(MODELS_DIR, "feature_names.pkl"))
+
+    importance_df = pd.DataFrame({
+        "Feature": feature_names,
+        "Importance": rf.feature_importances_
+    }).sort_values(by="Importance", ascending=False)
+
+    print("\n=== Top 10 Important Features ===")
+    print(importance_df.head(10))
+
+    # Save feature importance
+    importance_df.to_csv(
+        os.path.join(MODELS_DIR, "feature_importance.csv"),
+        index=False
+    )
+
+
+if __name__ == "__main__":
+    train_random_forest()
