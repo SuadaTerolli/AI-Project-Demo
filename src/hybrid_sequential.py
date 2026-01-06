@@ -4,7 +4,7 @@ import os
 
 from rule_based import RuleBasedAttritionAgent
 from preprocessing import preprocess_data
-from sklearn.metrics import accuracy_score,precision_score,recall_score, f1_score
+from sklearn.metrics import precision_score,recall_score, roc_auc_score, f1_score
 
 
 def run_sequential_system():
@@ -33,22 +33,25 @@ def run_sequential_system():
 
     # 7. RF predictions ONLY for undecided rows
     rf_preds = rf_model.predict(X_test.loc[undecided_mask])
+    rf_proba = rf_model.predict_proba(X_test.loc[undecided_mask])[:, 1]
 
     # 8. Combine predictions
     final_preds = rule_preds.copy()
     final_preds.loc[undecided_mask] = rf_preds
-
-    # Ensure correct type
     final_preds = final_preds.astype(int)
 
+    final_proba=pd.Series(index=y_test.index, dtype=float)
+    final_proba.loc[~undecided_mask] = final_preds.loc[~undecided_mask]
+    final_proba.loc[undecided_mask] = rf_proba
+
     # 9. Evaluation
-    accuracy = accuracy_score(y_test, final_preds)
+    area_under_curve = roc_auc_score(y_test, final_proba)
     precision = precision_score(y_test, final_preds)
     recall = recall_score(y_test, final_preds)
     f1 = f1_score(y_test, final_preds)
 
     print("\n=== Sequential Hybrid System Evaluation (TEST SET) ===")
-    print(f"Accuracy : {accuracy:.4f}")
+    print(f"ROC-AUC  : {area_under_curve:.4f}")
     print(f"Precision: {precision:.4f}")
     print(f"Recall   : {recall:.4f}")
     print(f"F1 Score : {f1:.4f}")

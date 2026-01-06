@@ -3,10 +3,10 @@ import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
-    accuracy_score,
     precision_score,
     recall_score,
     f1_score,
+    roc_auc_score,
     confusion_matrix,
     classification_report
 )
@@ -24,27 +24,30 @@ def train_random_forest():
     min_samples_split=10,      # avoids noisy splits
     min_samples_leaf=5,        # smoother decision boundaries
     max_features="sqrt",
-    class_weight={0: 1, 1: 3}, # focus more on attrition
+    class_weight="balanced_subsample", # focus more on attrition
     random_state=42,
     n_jobs=-1
 )
 
     rf.fit(X_train, y_train)
 
-    # Predictions
-    y_pred = rf.predict(X_test)
+    y_proba=rf.predict_proba(X_test)[:, 1]
+
+
+    custom_threshold = 0.3
+    y_pred_tuned= (y_proba >= custom_threshold).astype(int)
+    
 
     # Evaluation
     print("\n=== Random Forest Evaluation ===")
-    print(f"Accuracy : {accuracy_score(y_test, y_pred):.4f}")
-    print(f"Precision: {precision_score(y_test, y_pred):.4f}")
-    print(f"Recall   : {recall_score(y_test, y_pred):.4f}")
-    print(f"F1 Score : {f1_score(y_test, y_pred):.4f}")
+    print(f"ROC-AUC  : {roc_auc_score(y_test, y_proba):.4f}")
+    print(f"Precision: {precision_score(y_test, y_pred_tuned):.4f}")
+    print(f"Recall   : {recall_score(y_test, y_pred_tuned):.4f}")
+    print(f"F1 Score : {f1_score(y_test, y_pred_tuned):.4f}")
     print("\nConfusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
+    print(confusion_matrix(y_test, y_pred_tuned))
     print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
-
+    print(classification_report(y_test, y_pred_tuned))
     # Save model
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     MODELS_DIR = os.path.join(BASE_DIR, "models")

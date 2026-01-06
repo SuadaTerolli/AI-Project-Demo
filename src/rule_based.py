@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 import os
 
 class RuleBasedAttritionAgent:
@@ -87,12 +87,11 @@ def evaluate_rule_based_system(df):
     y_pred_decided = y_pred[decided_mask]
 
     coverage = decided_mask.mean()
-    accuracy = accuracy_score(y_true_decided, y_pred_decided)
     precision = precision_score(y_true_decided, y_pred_decided)
     recall = recall_score(y_true_decided, y_pred_decided)
     f1 = f1_score(y_true_decided, y_pred_decided)
 
-    return accuracy,precision,recall, f1, coverage
+    return precision,recall, f1, coverage
 
 
 # MAIN (OPTIONAL)
@@ -103,11 +102,10 @@ def main():
 
     df = pd.read_csv(DATA_PATH)
 
-    accuracy, precision, recall, f1, coverage = evaluate_rule_based_system(df)
+    precision, recall, f1, coverage = evaluate_rule_based_system(df)
 
     print("\n=== Rule-Based System Evaluation ===")
     print(f"Coverage : {coverage:.2%}")
-    print(f"Accuracy : {accuracy:.4f}")
     print(f"Precision: {precision:.4f}")
     print(f"Recall   : {recall:.4f}")
     print(f"F1 Score : {f1:.4f}")
