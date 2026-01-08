@@ -38,7 +38,7 @@ def train_random_forest():
     y_pred_tuned= (y_proba >= custom_threshold).astype(int)
     
 
-    # Evaluation
+    
     print("\n=== Random Forest Evaluation ===")
     print(f"ROC-AUC  : {roc_auc_score(y_test, y_proba):.4f}")
     print(f"Precision: {precision_score(y_test, y_pred_tuned):.4f}")
