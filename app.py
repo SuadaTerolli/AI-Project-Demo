@@ -1,22 +1,25 @@
 import os
+import sys
 import joblib
 import pandas as pd
 import streamlit as st
 
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
-from src.rule_based import RuleBasedAttritionAgent
-from src.preprocessing import preprocess_data
-
-
-# ============================================================
-# PATHS (robust for src/ layout)
-# ============================================================
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = APP_DIR
 if os.path.basename(APP_DIR).lower() == "src":
     ROOT_DIR = os.path.dirname(APP_DIR)
 
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+from src.rule_based import RuleBasedAttritionAgent
+from src.preprocessing import preprocess_data
+
+# ============================================================
+# PATHS
+# ============================================================
 MODELS_DIR = os.path.join(ROOT_DIR, "models")
 DATA_PATH = os.path.join(ROOT_DIR, "data", "HR-Employee-Attrition.csv")
 
@@ -24,7 +27,6 @@ RF_PATH = os.path.join(MODELS_DIR, "random_forest.pkl")
 FEATURES_PATH = os.path.join(MODELS_DIR, "feature_names.pkl")
 IMPORTANCE_PATH = os.path.join(MODELS_DIR, "feature_importance.csv")
 
-# try to find where rule_based.py and preprocessing.py actually live (src layout)
 RULE_FILE = os.path.join(ROOT_DIR, "src", "rule_based.py")
 PREP_FILE = os.path.join(ROOT_DIR, "src", "preprocessing.py")
 
@@ -40,7 +42,6 @@ CACHE_BUSTER = (
     file_mtime(RULE_FILE),
     file_mtime(PREP_FILE),
 )
-
 
 # ============================================================
 # PAGE CONFIG
@@ -58,112 +59,219 @@ st.set_page_config(
 st.markdown(
     """
 <style>
+/* ============================================================
+   THEME TOKENS (default = light)
+   ============================================================ */
+:root {
+  --bg: radial-gradient(1200px 600px at 10% 5%, #ffffff 0%, #f7f8fc 40%, #f2f4fb 100%);
+  --text: #111827;
+
+  --card-bg: rgba(255,255,255,0.80);
+  --card-border: rgba(15, 23, 42, 0.08);
+
+  --sidebar-bg: linear-gradient(180deg, #0b1220 0%, #0f1a33 60%, #0b1220 100%);
+  --sidebar-text: #e5e7eb;
+
+  --input-bg: #ffffff;
+  --input-text: #111827;
+  --input-border: rgba(15, 23, 42, 0.12);
+
+  --dropdown-bg: #ffffff;
+  --dropdown-text: #111827;
+
+  --primary: #2563eb;
+}
+
+/* ============================================================
+   DARK MODE overrides (based on PC theme)
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: radial-gradient(1200px 600px at 10% 5%, #0b1220 0%, #0a0f1a 55%, #070b12 100%);
+    --text: #e5e7eb;
+
+    --card-bg: rgba(17, 24, 39, 0.72);
+    --card-border: rgba(255,255,255,0.10);
+
+    --sidebar-bg: linear-gradient(180deg, #050814 0%, #0b1220 60%, #050814 100%);
+    --sidebar-text: #e5e7eb;
+
+    --input-bg: #111827;
+    --input-text: #e5e7eb;
+    --input-border: rgba(255,255,255,0.14);
+
+    --dropdown-bg: #111827;
+    --dropdown-text: #e5e7eb;
+
+    --primary: #60a5fa;
+  }
+}
+
+/* ============================================================
+   APP SURFACE
+   ============================================================ */
 .stApp {
-    background: radial-gradient(1200px 600px at 10% 5%, #ffffff 0%, #f7f8fc 40%, #f2f4fb 100%);
-    color: #111827;
+  background: var(--bg);
+  color: var(--text);
 }
 .block-container {
-    max-width: 1400px;
-    padding-top: 2.25rem;
-    padding-bottom: 2.5rem;
+  max-width: 1400px;
+  padding-top: 2.25rem;
+  padding-bottom: 2.5rem;
 }
-h1, h2, h3, h4 { color: #0f172a; letter-spacing: -0.02em; }
-p, li, span, div { color: #111827; }
+h1, h2, h3, h4 { color: var(--text); letter-spacing: -0.02em; }
+p, li, span { color: var(--text); }
 
+/* Sidebar */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0b1220 0%, #0f1a33 60%, #0b1220 100%);
-    border-right: 1px solid rgba(255,255,255,0.08);
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(255,255,255,0.08);
 }
-section[data-testid="stSidebar"] * { color: #e5e7eb !important; }
-section[data-testid="stSidebar"] .stRadio label,
-section[data-testid="stSidebar"] .stMarkdown,
-section[data-testid="stSidebar"] p { color: #e5e7eb !important; }
+section[data-testid="stSidebar"] * { color: var(--sidebar-text) !important; }
 
+/* Cards */
 .card {
-    background: rgba(255,255,255,0.80);
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-    border-radius: 18px;
-    padding: 22px 22px;
-    margin: 0 0 18px 0;
-    backdrop-filter: blur(8px);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  padding: 22px 22px;
+  margin: 0 0 18px 0;
+  backdrop-filter: blur(8px);
 }
 .kicker {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: rgba(15, 23, 42, 0.70);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.70);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4rem;
+}
+@media (prefers-color-scheme: dark) {
+  .kicker { color: rgba(229, 231, 235, 0.72); }
 }
 .hero-title {
-    font-size: 2.25rem;
-    font-weight: 800;
-    line-height: 1.12;
-    margin: 0.25rem 0 0.5rem 0;
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.12;
+  margin: 0.25rem 0 0.5rem 0;
 }
 .hero-subtitle {
-    font-size: 1.03rem;
-    color: rgba(15, 23, 42, 0.72);
-    max-width: 70ch;
-    margin: 0.1rem 0 0 0;
+  font-size: 1.03rem;
+  color: rgba(15, 23, 42, 0.72);
+  max-width: 70ch;
+  margin: 0.1rem 0 0 0;
+}
+@media (prefers-color-scheme: dark) {
+  .hero-subtitle { color: rgba(229, 231, 235, 0.72); }
 }
 
+/* Buttons */
 .stButton > button {
-    background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 50%, #1d4ed8 100%);
-    color: white;
-    border: 0;
-    border-radius: 12px;
-    height: 3.1em;
-    padding: 0 1.2rem;
-    font-size: 0.98rem;
-    font-weight: 600;
-    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
-    transition: transform 0.08s ease-in-out, box-shadow 0.08s ease-in-out;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary) 50%, var(--primary) 100%);
+  color: white;
+  border: 0;
+  border-radius: 12px;
+  height: 3.1em;
+  padding: 0 1.2rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  transition: transform 0.08s ease-in-out, box-shadow 0.08s ease-in-out;
 }
 .stButton > button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.26);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.26);
 }
 
-.status {
-    border-radius: 14px;
-    padding: 16px 16px;
-    border: 1px solid rgba(15, 23, 42, 0.10);
-    margin-top: 12px;
+/* ============================================================
+   FIX INPUTS (number_input, selectbox, sliders)
+   These are the ones that become unreadable in dark mode.
+   ============================================================ */
+
+/* Most Streamlit inputs render an <input> */
+.stNumberInput input,
+.stTextInput input {
+  background: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border: 1px solid var(--input-border) !important;
 }
+
+/* Selectbox control */
+div[data-baseweb="select"] > div {
+  background: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border: 1px solid var(--input-border) !important;
+}
+
+/* Selectbox selected text */
+div[data-baseweb="select"] span {
+  color: var(--input-text) !important;
+}
+
+/* Dropdown menu list */
+div[data-baseweb="popover"] div[role="listbox"] {
+  background: var(--dropdown-bg) !important;
+  color: var(--dropdown-text) !important;
+  border: 1px solid var(--input-border) !important;
+}
+
+/* Dropdown menu items */
+div[data-baseweb="popover"] div[role="option"] {
+  background: var(--dropdown-bg) !important;
+  color: var(--dropdown-text) !important;
+}
+
+/* Hover state */
+div[data-baseweb="popover"] div[role="option"]:hover {
+  filter: brightness(1.08);
+}
+
+/* Dataframe wrapper */
+[data-testid="stDataFrame"] {
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+/* STATUS boxes (force visible in both themes) */
+.status {
+  border-radius: 14px;
+  padding: 16px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  margin-top: 12px;
+}
+
+/* Light mode */
 .status.good {
-    background: rgba(236, 253, 245, 0.85);
-    border-left: 6px solid #10b981;
+  background: rgba(236, 253, 245, 0.85);
+  border-left: 6px solid #10b981;
 }
 .status.bad {
-    background: rgba(254, 242, 242, 0.85);
+  background: rgba(254, 242, 242, 0.85);
+  border-left: 6px solid #ef4444;
+}
+.status .title { font-weight: 800; margin: 0 0 6px 0; }
+.status .meta { margin: 0; }
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .status {
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .status.good {
+    background: rgba(16, 185, 129, 0.12);  /* green tint */
+    border-left: 6px solid #10b981;
+  }
+  .status.bad {
+    background: rgba(239, 68, 68, 0.12);   /* red tint */
     border-left: 6px solid #ef4444;
-}
-.status .title {
-    font-weight: 800;
-    margin: 0 0 6px 0;
-}
-.status .meta {
-    color: rgba(15, 23, 42, 0.75);
-    margin: 0;
+  }
+  .status .title,
+  .status .meta {
+    color: #e5e7eb !important;
+  }
 }
 
-.callout {
-    background: rgba(239, 246, 255, 0.80);
-    border: 1px solid rgba(37, 99, 235, 0.18);
-    border-left: 6px solid rgba(37, 99, 235, 0.70);
-    border-radius: 14px;
-    padding: 14px 14px;
-    margin-top: 12px;
-}
-.callout p { margin: 0.25rem 0; color: rgba(15, 23, 42, 0.78); }
-
-[data-testid="stDataFrame"] {
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 14px;
-    overflow: hidden;
-}
 </style>
 """,
     unsafe_allow_html=True,
@@ -187,6 +295,29 @@ if not os.path.exists(FEATURES_PATH):
 
 feature_names = joblib.load(FEATURES_PATH)
 
+# ============================================================
+# CACHED DATA / SPLIT (keeps app consistent + faster)
+# ============================================================
+@st.cache_data(show_spinner=False)
+def load_raw_df(cache_buster: tuple) -> pd.DataFrame:
+    if not os.path.exists(DATA_PATH):
+        return pd.DataFrame()
+    return pd.read_csv(DATA_PATH)
+
+
+@st.cache_data(show_spinner=False)
+def get_split(cache_buster: tuple):
+    return preprocess_data()
+
+
+@st.cache_data(show_spinner=False)
+def get_rule_agent_train_calibrated(cache_buster: tuple) -> RuleBasedAttritionAgent | None:
+    raw_df = load_raw_df(cache_buster)
+    if raw_df.empty:
+        return None
+    X_train, X_test, y_train, y_test = get_split(cache_buster)
+    raw_train_df = raw_df.loc[X_train.index].copy()
+    return RuleBasedAttritionAgent(calibration_df=raw_train_df)
 
 # ============================================================
 # HELPERS
@@ -206,7 +337,6 @@ def build_encoded_input(
     hourly_rate: int,
     monthly_rate: int,
 ) -> pd.DataFrame:
-    """Create one-row encoded dataframe aligned to training columns."""
     x = pd.DataFrame(0, index=[0], columns=feature_names_list)
 
     values = [
@@ -242,7 +372,6 @@ def build_raw_row(
     total_years: int,
     years_manager: int,
 ) -> pd.DataFrame:
-    """Raw row for rule-based inference (must include rule-relevant fields)."""
     return pd.DataFrame([{
         "Age": age,
         "MonthlyIncome": monthly_income,
@@ -266,61 +395,54 @@ def hybrid_sequential_predict(
     raw_row: pd.DataFrame,
     x_encoded: pd.DataFrame,
     threshold: float,
-    rule_agent: RuleBasedAttritionAgent
+    rule_agent: RuleBasedAttritionAgent,
 ) -> tuple[int, float | None, str]:
     """
-    Hybrid logic:
-    - If rule says YES -> final YES (no probability shown).
-    - If rule says NO -> allow RF override if RF >= threshold.
-    - If rule abstains -> RF decides with threshold (probability shown).
+    Hybrid (rules-first, NO override):
+    - If rule predicts 1 -> final 1
+    - If rule predicts 0 -> final 0
+    - If rule abstains -> RF decides (prob shown)
+    Result explanation always reports BOTH rule and RF.
     """
-    rule_pred = rule_agent.predict(raw_row).iloc[0]
+    rule_pred = rule_agent.predict(raw_row).iloc[0] 
 
     rf_prob = float(rf_model.predict_proba(x_encoded)[0][1])
     rf_pred = int(rf_prob >= threshold)
 
+    rule_text = "abstained" if pd.isna(rule_pred) else ("Yes" if int(rule_pred) == 1 else "No")
+    rf_text = "Yes" if rf_pred == 1 else "No"
+
     if pd.notna(rule_pred):
-        rule_pred = int(rule_pred)
+        final_pred = int(rule_pred)
+        explanation = (
+            f"Rule-based prediction: {rule_text} (used as final decision). "
+            f"Random Forest prediction: {rf_text} (probability {rf_prob:.2%}, threshold {threshold:.2f})."
+        )
+        return final_pred, None, explanation
 
-        if rule_pred == 1:
-            return 1, None, "Decision produced by the rule-based system (high-confidence attrition rule fired)."
-
-        # rule says NO -> allow RF override if RF predicts YES at selected threshold
-        if rf_pred == 1:
-            return 1, rf_prob, (
-                f"Rule predicted 'No', but Random Forest probability {rf_prob:.2%} exceeded "
-                f"threshold {threshold:.2f} → override to 'Yes'."
-            )
-
-        return 0, None, "Decision produced by the rule-based system (high-confidence stay rule fired)."
-
-    # rule abstains -> RF decides
-    return rf_pred, rf_prob, f"Rule-based system abstained; prediction computed by Random Forest with threshold {threshold:.2f}."
+    explanation = (
+        f"Rule-based prediction: {rule_text}. "
+        f"Random Forest prediction used as fallback: {rf_text} (probability {rf_prob:.2%}, threshold {threshold:.2f})."
+    )
+    return rf_pred, rf_prob, explanation
 
 
+# ============================================================
+# METRICS (rigorous + consistent with terminal)
+# ============================================================
 @st.cache_data(show_spinner=False)
 def compute_metrics(threshold: float, cache_buster: tuple) -> pd.DataFrame:
-    """
-    Compute fresh metrics whenever key files change:
-    - models/random_forest.pkl
-    - models/feature_names.pkl
-    - data/HR-Employee-Attrition.csv
-    - src/rule_based.py
-    - src/preprocessing.py
-    """
-    if not os.path.exists(DATA_PATH):
+    raw_df = load_raw_df(cache_buster)
+    if raw_df.empty:
         return pd.DataFrame()
 
-    raw_df = pd.read_csv(DATA_PATH)
+    X_train, X_test, y_train, y_test = get_split(cache_buster)
 
-    # Calibrate rules from current data (important if your rule-based uses quantiles)
-    rule_agent_local = RuleBasedAttritionAgent(calibration_df=raw_df)
-
-    X_train, X_test, y_train, y_test = preprocess_data()
+    raw_train_df = raw_df.loc[X_train.index].copy()
     raw_test_df = raw_df.loc[X_test.index].copy()
+    rule_agent = RuleBasedAttritionAgent(calibration_df=raw_train_df)
 
-    # Rule-based predictions on raw test rows
-    rule_preds = rule_agent_local.predict(raw_test_df)  # 0/1/None
+    rule_preds = rule_agent.predict(raw_test_df)
     decided_mask = rule_preds.notna()
     coverage = float(decided_mask.mean())
 
@@ -333,9 +455,7 @@ def compute_metrics(threshold: float, cache_buster: tuple) -> pd.DataFrame:
     else:
         rb_precision = rb_recall = rb_f1 = 0.0
 
-    # RF tuned predictions on the full test set
-    rf_proba_all = rf_model.predict_proba(X_test)[:, 1]
-    rf_proba_s = pd.Series(rf_proba_all, index=y_test.index)
+    rf_proba_s = pd.Series(rf_model.predict_proba(X_test)[:, 1], index=y_test.index)
     rf_pred_tuned = (rf_proba_s >= threshold).astype(int)
 
     rf_auc = roc_auc_score(y_test, rf_proba_s)
@@ -343,9 +463,7 @@ def compute_metrics(threshold: float, cache_buster: tuple) -> pd.DataFrame:
     rf_recall = recall_score(y_test, rf_pred_tuned, zero_division=0)
     rf_f1 = f1_score(y_test, rf_pred_tuned, zero_division=0)
 
-    # Hybrid sequential: rule first, then RF; allow override of rule "No"
     final_preds = pd.Series(index=y_test.index, dtype=int)
-
     for idx in y_test.index:
         rp = rule_preds.loc[idx]
         rf_decision = int(rf_proba_s.loc[idx] >= threshold)
@@ -353,15 +471,8 @@ def compute_metrics(threshold: float, cache_buster: tuple) -> pd.DataFrame:
         if pd.isna(rp):
             final_preds.loc[idx] = rf_decision
         else:
-            rp = int(rp)
-            if rp == 1:
-                final_preds.loc[idx] = 1
-            else:
-                # override-or-keep using RF at threshold
-                final_preds.loc[idx] = rf_decision
+            final_preds.loc[idx] = int(rp)
 
-    # Hybrid scores for ROC-AUC: use RF probabilities everywhere,
-    # but force 1.0 when a rule confidently predicts attrition.
     hybrid_scores = rf_proba_s.copy()
     hybrid_scores.loc[rule_preds == 1] = 1.0
 
@@ -372,7 +483,7 @@ def compute_metrics(threshold: float, cache_buster: tuple) -> pd.DataFrame:
 
     return pd.DataFrame(
         {
-            "Model": ["Rule-Based", "Random Forest (tuned)", "Hybrid Sequential (tuned + override)"],
+            "Model": ["Rule-Based", "Random Forest (tuned)", "Hybrid Sequential (rules-first)"],
             "ROC-AUC": ["N/A", rf_auc, hy_auc],
             "Precision": [rb_precision, rf_precision, hy_precision],
             "Recall": [rb_recall, rf_recall, hy_recall],
@@ -380,7 +491,6 @@ def compute_metrics(threshold: float, cache_buster: tuple) -> pd.DataFrame:
             "Coverage": [coverage, 1.0, 1.0],
         }
     )
-
 
 # ============================================================
 # HERO
@@ -435,19 +545,19 @@ if section == "Overview":
   <div class="kicker">Section 1</div>
   <h2>Project Overview</h2>
   <p>
-    Employee attrition is typically imbalanced (most employees stay). For this reason, accuracy alone can be misleading.
+    Employee attrition is typically imbalanced (most employees stay). Accuracy alone can be misleading.
     This project reports ROC-AUC and uses threshold tuning to control the precision–recall trade-off.
   </p>
 
   <h3>Approach summary</h3>
   <ul>
-    <li><b>Rule-Based</b>: very explainable, but may abstain if no rule applies.</li>
-    <li><b>Random Forest (tuned)</b>: outputs a probability score; threshold controls the final classification.</li>
-    <li><b>Hybrid Sequential</b>: rules decide first; Random Forest fills undecided cases (with optional override).</li>
+    <li><b>Rule-Based</b>: explainable, but may abstain if no rule applies.</li>
+    <li><b>Random Forest (tuned)</b>: outputs a probability score; threshold controls classification.</li>
+    <li><b>Hybrid Sequential</b>: rules decide first; Random Forest fills undecided cases (no override).</li>
   </ul>
 
   <div class="callout">
-    <p><b>Note:</b> Hybrid matches Random Forest whenever the rule-based system abstains.</p>
+    <p><b>Evaluation note:</b> Rules are calibrated on the training split and evaluated on the test split.</p>
   </div>
 </div>
 """,
@@ -481,7 +591,7 @@ elif section == "Model Comparison":
         show_df = metrics_df.copy()
         for col in ["ROC-AUC", "Precision", "Recall", "F1 Score"]:
             show_df[col] = show_df[col].apply(lambda x: x if isinstance(x, str) else f"{x:.4f}")
-        show_df["Coverage"] = show_df["Coverage"].apply(lambda x: f"{x:.0%}")
+        show_df["Coverage"] = show_df["Coverage"].apply(lambda x: f"{x*100:.2f}%")
         st.dataframe(show_df, use_container_width=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -531,8 +641,8 @@ elif section == "Try a Prediction":
   <div class="kicker">Section 4</div>
   <h2>Interactive Prediction</h2>
   <p>
-    This form includes the most important numeric features from the trained Random Forest model.
-    If the hybrid system uses rules, probability may be unavailable because the decision is rule-based.
+    This form uses top Random Forest features. If the hybrid uses rules, probability may be unavailable
+    because the decision is rule-based.
   </p>
 </div>
 """,
@@ -596,11 +706,11 @@ elif section == "Try a Prediction":
             pred, prob = rf_predict_with_threshold(x_encoded, threshold)
             explanation = f"Random Forest prediction computed with threshold {threshold:.2f}."
         else:
-            if not os.path.exists(DATA_PATH):
+            rule_agent_live = get_rule_agent_train_calibrated(CACHE_BUSTER)
+            if rule_agent_live is None:
                 st.error("Dataset not found. Place HR-Employee-Attrition.csv inside data/ to calibrate rules.")
                 st.stop()
-            raw_df_for_rules = pd.read_csv(DATA_PATH)
-            rule_agent_live = RuleBasedAttritionAgent(calibration_df=raw_df_for_rules)
+
             pred, prob, explanation = hybrid_sequential_predict(raw_row, x_encoded, threshold, rule_agent_live)
 
         prob_txt = (
@@ -645,13 +755,9 @@ elif section == "Conclusion":
   <h2>Conclusion</h2>
   <ul>
     <li><b>Rule-based systems</b> provide strong interpretability, but may abstain and do not guarantee full coverage.</li>
-    <li><b>Random Forest with threshold tuning</b> is appropriate for imbalanced attrition prediction because it allows control over the recall–precision trade-off.</li>
-    <li><b>Hybrid sequential design</b> combines both approaches: rules decide where they are confident, and Random Forest completes coverage.</li>
+    <li><b>Random Forest with threshold tuning</b> helps control the recall–precision trade-off for attrition.</li>
+    <li><b>Hybrid sequential (rules-first)</b> uses rules when confident and falls back to ML when rules abstain.</li>
   </ul>
-
-  <div class="callout">
-    <p><b>Why hybrid sometimes matches Random Forest:</b> if no rule fires, the hybrid falls back to the Random Forest decision.</p>
-  </div>
 </div>
 """,
         unsafe_allow_html=True,

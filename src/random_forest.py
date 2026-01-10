@@ -14,17 +14,15 @@ from preprocessing import preprocess_data
 
 
 def train_random_forest():
-    # Load data
     X_train, X_test, y_train, y_test = preprocess_data()
 
-    # Train Random Forest
     rf = RandomForestClassifier(
-    n_estimators=500,          # more stable ensemble
-    max_depth=16,              # prevents overfitting
-    min_samples_split=10,      # avoids noisy splits
-    min_samples_leaf=5,        # smoother decision boundaries
+    n_estimators=500,          
+    max_depth=16,              
+    min_samples_split=10,     
+    min_samples_leaf=5,       
     max_features="sqrt",
-    class_weight="balanced_subsample", # focus more on attrition
+    class_weight="balanced_subsample", 
     random_state=42,
     n_jobs=-1
 )
@@ -68,7 +66,6 @@ def train_random_forest():
     print("\n=== Top 10 Important Features ===")
     print(importance_df.head(10))
 
-    # Save feature importance
     importance_df.to_csv(
         os.path.join(MODELS_DIR, "feature_importance.csv"),
         index=False
